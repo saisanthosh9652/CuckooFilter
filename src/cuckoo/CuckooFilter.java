@@ -12,7 +12,7 @@ public class CuckooFilter {
 	private int fingerPrintLength;
 	private int numberOfEntriesPerBucket;
 	private int maxNoOfKicks;
-	private byte[][][] filter;
+	private byte[][] filter;
 	private List<List<Integer>> graph;
 
 	public CuckooFilter() {
@@ -28,7 +28,7 @@ public class CuckooFilter {
 		}
 		this.numberOfEntriesPerBucket = 4;
 		this.maxNoOfKicks = 20;
-		this.filter = new byte[noOfBuckets][numberOfEntriesPerBucket][4];
+		this.filter = new byte[noOfBuckets][numberOfEntriesPerBucket];
 
 	}
 
@@ -90,11 +90,35 @@ public class CuckooFilter {
 		byte fp = fingerprint(element);
 		int pos1 = hash1(element) % this.noOfBuckets;
 		int pos2 = (pos1 ^ hash2(element)) % this.noOfBuckets;
+		for (int i = 0; i < this.noOfBuckets; i++) {
+			if (filter[pos1][i] == 0) {
+				filter[pos1][i] = fp;
+				return true;
+			}
+			if (filter[pos2][i] == 0) {
+				filter[pos2][i] = fp;
+				return true;
+			}
+		}
 
 		return false;
 	}
 
 	public boolean delete(int element) {
+		byte fp = fingerprint(element);
+		int pos1 = hash1(element) % this.noOfBuckets;
+		int pos2 = (pos1 ^ hash2(element)) % this.noOfBuckets;
+
+		for (int i = 0; i < numberOfEntriesPerBucket; i++) {
+			if (filter[pos1][i] == fp) {
+				filter[pos1][i] = 0;
+				return true;
+			}
+			if (filter[pos2][i] == fp) {
+				filter[pos2][i] = 0;
+				return true;
+			}
+		}
 		return false;
 	}
 
@@ -103,15 +127,11 @@ public class CuckooFilter {
 		int pos1 = hash1(element) % this.noOfBuckets;
 		int pos2 = (pos1 ^ hash2(element)) % this.noOfBuckets;
 
-		for (int i = 0; i < noOfBuckets; i++) {
-			if (Arrays.equals(filter[pos1][i], new byte[] { fp })) {
-				return true;
-			}
-			if (Arrays.equals(filter[pos2][i], new byte[] { fp })) {
+		for (int i = 0; i < numberOfEntriesPerBucket; i++) {
+			if (filter[pos1][i] == fp || filter[pos2][i] == fp) {
 				return true;
 			}
 		}
-
 		return false;
 	}
 
