@@ -32,6 +32,22 @@ public class CuckooFilter {
 
 	}
 
+	public CuckooFilter(int noOfBuckets, int fingerPrintLength, int numberOfEntriesPerBucket, int maxNoOfKicks) {
+		this.noOfBuckets = noOfBuckets;
+		this.fingerPrintLength = fingerPrintLength;
+		this.graph = new ArrayList();
+		for (int i = 0; i < noOfBuckets; i++) {
+			List<Integer> temp = new ArrayList<>();
+			for (int j = 0; j < noOfBuckets; j++) {
+				temp.add(0);
+			}
+			this.graph.add(temp);
+		}
+		this.numberOfEntriesPerBucket = numberOfEntriesPerBucket;
+		this.maxNoOfKicks = maxNoOfKicks;
+		this.filter = new byte[noOfBuckets][numberOfEntriesPerBucket];
+	}
+
 	private byte[] sha256(byte[] data) {
 		try {
 			MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -62,35 +78,38 @@ public class CuckooFilter {
 		}
 	}
 
-	private byte fingerprint(Object item) {
-		byte[] itemBytes = item.toString().getBytes();
+	private byte fingerprint(int item) {
+		byte[] itemBytes = Integer.toString(item).getBytes();
 		byte[] hash = sha384(itemBytes);
 
-		// Take the last byte of the hash
+		if (fingerPrintLength > 8) {
+			throw new IllegalArgumentException("fingerprintLength must be 8 or less");
+		}
+
 		byte lastByte = hash[hash.length - 1];
 
-		// Take only the last 4 bits
-		return (byte) (lastByte & 0b00001111);
+		int mask = (1 << fingerPrintLength) - 1;
+
+		// Apply the mask to get only the last fingerprintLength bits
+		return (byte) (lastByte & mask);
 	}
 
 	private int hash1(int item) {
 		byte fp = fingerprint(item);
-		return Math.abs(Arrays.hashCode(sha256(new byte[] { fp })) % noOfBuckets);
+		return Math.abs(Arrays.hashCode(sha256(new byte[] { fp })) % this.noOfBuckets);
 	}
 
-	private int hash2(int item) {
-		byte fp = fingerprint(item);
-		return Math.abs(Arrays.hashCode(sha512(new byte[] { fp })) % noOfBuckets);
+	private int hash2(byte fp) {
+		return Math.abs(Arrays.hashCode(sha512(new byte[] { fp })) % this.noOfBuckets);
 	}
 
-	public boolean insert(int element, int presentKick) {
-		if (presentKick >= this.maxNoOfKicks) {
-			return false;
-		}
+	public boolean insert(int element) {
+
 		byte fp = fingerprint(element);
 		int pos1 = hash1(element) % this.noOfBuckets;
-		int pos2 = (pos1 ^ hash2(element)) % this.noOfBuckets;
-		for (int i = 0; i < this.noOfBuckets; i++) {
+		int pos2 = (pos1 ^ hash2(fp)) % this.noOfBuckets;
+
+		for (int i = 0; i < this.numberOfEntriesPerBucket; i++) {
 			if (filter[pos1][i] == 0) {
 				filter[pos1][i] = fp;
 				return true;
@@ -101,14 +120,34 @@ public class CuckooFilter {
 			}
 		}
 
+//		byte replacedElementFp = filter[pos1][this.numberOfEntriesPerBucket - 1];
+//		int replaceElementOtherPosition = replacedElementFp ^ hash2(replacedElementFp);
+		int replacedElementPosition = pos1;
+		byte replacedElementFp = filter[replacedElementPosition][this.numberOfEntriesPerBucket - 1];
+
+		for (int swap = 0; swap < this.maxNoOfKicks; swap++) {
+			int replaceElementOtherPosition = replacedElementFp ^ hash2(replacedElementFp);
+			for (int i = 0; i < this.numberOfEntriesPerBucket; i++) {
+				if (filter[replaceElementOtherPosition][i] == 0) {
+					filter[replaceElementOtherPosition][i] = fp;
+					return true;
+				}
+
+			}
+			byte temp = filter[replaceElementOtherPosition][this.numberOfEntriesPerBucket - 1];
+			filter[replaceElementOtherPosition][this.numberOfEntriesPerBucket - 1] = replacedElementFp;
+			graph.get(replacedElementPosition).set(replaceElementOtherPosition, 1);
+			replacedElementPosition = replaceElementOtherPosition;
+			replacedElementFp = temp;
+
+		}
 		return false;
 	}
 
 	public boolean delete(int element) {
 		byte fp = fingerprint(element);
 		int pos1 = hash1(element) % this.noOfBuckets;
-		int pos2 = (pos1 ^ hash2(element)) % this.noOfBuckets;
-
+		int pos2 = (pos1 ^ hash2(fp)) % noOfBuckets;
 		for (int i = 0; i < numberOfEntriesPerBucket; i++) {
 			if (filter[pos1][i] == fp) {
 				filter[pos1][i] = 0;
@@ -125,8 +164,7 @@ public class CuckooFilter {
 	public boolean find(int element) {
 		byte fp = fingerprint(element);
 		int pos1 = hash1(element) % this.noOfBuckets;
-		int pos2 = (pos1 ^ hash2(element)) % this.noOfBuckets;
-
+		int pos2 = (pos1 ^ hash2(fp)) % noOfBuckets;
 		for (int i = 0; i < numberOfEntriesPerBucket; i++) {
 			if (filter[pos1][i] == fp || filter[pos2][i] == fp) {
 				return true;

@@ -6,8 +6,12 @@ import java.util.Scanner;
 public class Solution {
 
 	public static void main(String[] args) {
-		CuckooFilter cuckooFilter = new CuckooFilter();
 		Scanner scanner = new Scanner(System.in);
+		System.out.println("Enter noOfBuckets,fingerPrintLength, numberOfEntriesPerBucket,maxNoOfKicks");
+
+		CuckooFilter cuckooFilter = new CuckooFilter(scanner.nextInt(), scanner.nextInt(), scanner.nextInt(),
+				scanner.nextInt());
+
 		int choice = 1;
 		while (choice < 5 && choice >= 1) {
 			System.out.println("Enter value 1.insert 2.delete 3.lookup 4.getCuckooGraph 5.exit");
@@ -17,7 +21,7 @@ public class Solution {
 			case 1:
 				System.out.println("Enter the value to insert into cuckoo");
 				element = scanner.nextInt();
-				boolean isInserted = cuckooFilter.insert(element, 1);
+				boolean isInserted = cuckooFilter.insert(element);
 				if (isInserted) {
 					System.out.println("Element inserted successfully");
 				} else {
