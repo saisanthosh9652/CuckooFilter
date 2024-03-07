@@ -2,9 +2,7 @@ package cuckoo;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 public class CuckooFilter {
 
@@ -13,19 +11,11 @@ public class CuckooFilter {
 	private int numberOfEntriesPerBucket;
 	private int maxNoOfKicks;
 	private byte[][] filter;
-	private List<List<Integer>> graph;
 
 	public CuckooFilter() {
 		this.noOfBuckets = 16;
 		this.fingerPrintLength = 4;
-		this.graph = new ArrayList();
-		for (int i = 0; i < noOfBuckets; i++) {
-			List<Integer> temp = new ArrayList<>();
-			for (int j = 0; j < noOfBuckets; j++) {
-				temp.add(0);
-			}
-			this.graph.add(temp);
-		}
+
 		this.numberOfEntriesPerBucket = 4;
 		this.maxNoOfKicks = 20;
 		this.filter = new byte[noOfBuckets][numberOfEntriesPerBucket];
@@ -35,14 +25,7 @@ public class CuckooFilter {
 	public CuckooFilter(int noOfBuckets, int fingerPrintLength, int numberOfEntriesPerBucket, int maxNoOfKicks) {
 		this.noOfBuckets = noOfBuckets;
 		this.fingerPrintLength = fingerPrintLength;
-		this.graph = new ArrayList();
-		for (int i = 0; i < noOfBuckets; i++) {
-			List<Integer> temp = new ArrayList<>();
-			for (int j = 0; j < noOfBuckets; j++) {
-				temp.add(0);
-			}
-			this.graph.add(temp);
-		}
+
 		this.numberOfEntriesPerBucket = numberOfEntriesPerBucket;
 		this.maxNoOfKicks = maxNoOfKicks;
 		this.filter = new byte[noOfBuckets][numberOfEntriesPerBucket];
@@ -136,7 +119,6 @@ public class CuckooFilter {
 			}
 			byte temp = filter[replaceElementOtherPosition][this.numberOfEntriesPerBucket - 1];
 			filter[replaceElementOtherPosition][this.numberOfEntriesPerBucket - 1] = replacedElementFp;
-			graph.get(replacedElementPosition).set(replaceElementOtherPosition, 1);
 			replacedElementPosition = replaceElementOtherPosition;
 			replacedElementFp = temp;
 
@@ -173,8 +155,20 @@ public class CuckooFilter {
 		return false;
 	}
 
-	public List<List<Integer>> getGraph() {
-		return this.graph;
+	public int[][] generateCuckooFilterGraph() {
+		int[][] graph = new int[noOfBuckets][noOfBuckets];
+
+		for (int b = 0; b < noOfBuckets; b++) {
+			for (int f = 1; f < (1 << fingerPrintLength); f++) {
+				int neighbor = hash2((byte) f) % noOfBuckets;
+				if (neighbor != b) {
+					graph[b][neighbor] = 1;
+					graph[neighbor][b] = 1;
+				}
+			}
+		}
+
+		return graph;
 	}
 
 }

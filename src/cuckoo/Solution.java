@@ -1,6 +1,5 @@
 package cuckoo;
 
-import java.util.List;
 import java.util.Scanner;
 
 public class Solution {
@@ -49,15 +48,8 @@ public class Solution {
 				}
 				break;
 			case 4:
-				List<List<Integer>> graph = cuckooFilter.getGraph();
-				int m = graph.size();
-				int n = graph.get(0).size();
-				for (int i = 0; i < m; i++) {
-					for (int j = 0; j < n; j++) {
-						System.out.print(graph.get(i).get(j) + " ");
-					}
-					System.out.println();
-				}
+				int[][] cfGraph = cuckooFilter.generateCuckooFilterGraph();
+				printCuckooFIlterGraph(cfGraph);
 				break;
 			case 5:
 				break;
@@ -68,4 +60,12 @@ public class Solution {
 		scanner.close();
 	}
 
+	public static void printCuckooFIlterGraph(int[][] graph) {
+		for (int[] row : graph) {
+			for (int cell : row) {
+				System.out.print(cell + " ");
+			}
+			System.out.println();
+		}
+	}
 }
