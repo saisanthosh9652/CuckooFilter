@@ -160,7 +160,7 @@ public class CuckooFilter {
 
 		for (int b = 0; b < noOfBuckets; b++) {
 			for (int f = 1; f < (1 << fingerPrintLength); f++) {
-				int neighbor = hash2((byte) f) % noOfBuckets;
+				int neighbor = (b ^ hash2((byte) f)) % noOfBuckets;
 				if (neighbor != b) {
 					graph[b][neighbor] = 1;
 					graph[neighbor][b] = 1;
